@@ -37,6 +37,7 @@ export default function UserManage() {
   const [moduletitle, setModuletitle] = useState('')
   const [moduletype, setModuletype] = useState('')
   const [currPeopleId, setCurrPeopleId] = useState('')
+  const [roleEditRecord, setRoleEditRecord] = useState(null)
   const [searchKey, setSearchKey] = useState({
     keyword: '',
     pageSize: 10,
@@ -89,6 +90,43 @@ export default function UserManage() {
     fetchChangeUserStatus({ id: id, status: status }, (res) => {
       message.success(res.msg)
       getData(searchKey)
+    }, (res) => {
+      message.error(res.msg || '操作失败，请重试')
+    })
+  }
+
+  const handleRoleEdit = (record) => {
+    if (!userRoleSetResult.list || userRoleSetResult.list.length === 0) {
+      message.warning('暂无可分配角色')
+      return
+    }
+    const currentRoleIds = (record.roles || []).map(item => item.id)
+    setRoleEditRecord({ id: record.id, currentRoleIds })
+    setRoleVisible(true)
+  }
+
+  const handleRoleOk = () => {
+    setRoleVisible(false)
+    setRoleEditRecord(null)
+    getData(searchKey)
+  }
+
+  const handleRoleCancel = () => {
+    setRoleVisible(false)
+    setRoleEditRecord(null)
+  }
+
+  const handleDelete = (id) => {
+    fetchUserDelete({ id }, (res) => {
+      message.success(res.msg)
+      const newPage = (userListResult.list.length <= 1 && searchKey.pageNo > 1)
+        ? searchKey.pageNo - 1
+        : searchKey.pageNo
+      const newKey = { ...searchKey, pageNo: newPage }
+      setSearchKey(newKey)
+      getData(newKey)
+    }, (res) => {
+      message.error(res.msg || '删除失败，请重试')
     })
   }
 
@@ -278,6 +316,12 @@ export default function UserManage() {
                   <span className="ant-divider" />
                 </span>
               ) : null}
+              {btnRights.edit ? (
+                <span>
+                  <a onClick={() => handleRoleEdit(record)}>修改角色</a>
+                  <span className="ant-divider" />
+                </span>
+              ) : null}
               {btnRights.freeze ? (
                 <span>
                   <Popconfirm
@@ -287,7 +331,17 @@ export default function UserManage() {
                   >
                     <a>{record.status ? '解冻账户' : '冻结账户'}</a>
                   </Popconfirm>
+                  <span className="ant-divider" />
                 </span>
+              ) : null}
+              {btnRights.delete ? (
+                <Popconfirm
+                  title="确认删除该用户？删除后不可恢复。"
+                  placement="left"
+                  onConfirm={() => handleDelete(record.id)}
+                >
+                  <a style={{ color: '#ff4d4f' }}>删除</a>
+                </Popconfirm>
               ) : null}
             </span>
           )
@@ -394,6 +448,17 @@ export default function UserManage() {
           type={moduletype}
           onCancel={handleCancel}
           roleList={userRoleSetResult.list || []}
+        />
+      ) : null}
+
+      {RoleVisible && roleEditRecord ? (
+        <SelectRole
+          visible={RoleVisible}
+          onCancel={handleRoleCancel}
+          roleList={userRoleSetResult.list || []}
+          currentRoleIds={roleEditRecord.currentRoleIds}
+          userId={roleEditRecord.id}
+          onOk={handleRoleOk}
         />
       ) : null}
     </div>
