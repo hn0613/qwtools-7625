@@ -73,39 +73,35 @@ export default function RoleManage() {
   const [checkedIdArr, setCheckedIdArr] = useState({})
 
   useEffect(() => {
-    getData('init')
+    getData()
   }, [])
 
-  const changeTab = (e) => {
-    if (e.target.value === 'stepTree') {
+  // 核心 effect：角色、页签、搜索/分页任一变化时自动取数，消除 stale closure
+  useEffect(() => {
+    if (!currRoleId) return
+    if (activeTab === 'stepTree') {
       getTreeList()
-    } else if (e.target.value === 'setmodules') {
+    } else if (activeTab === 'setmodules') {
       getRoleList()
-    } else if (e.target.value === 'setpeoples') {
+    } else if (activeTab === 'setpeoples') {
       getPeopleList()
     }
+  }, [currRoleId, activeTab, peopleSearchKey])
+
+  const changeTab = (e) => {
     setActiveTab(e.target.value)
   }
 
-  const getData = (state) => {
+  const getData = () => {
     setSpinloading(true)
     fetchRoleList({ ...searchKey }, (result) => {
       setSpinloading(false)
       setRoleListResult(result.data)
-      if (state === 'init') {
-        if (result.data.list.length >= 1) {
-          const roleId = result.data.list[0].id || -1
-          setCurrRoleId(roleId)
-          const type = result.data.list[0].type
-          setRoleType(type)
-          if (activeTab === 'stepTree') {
-            getTreeList()
-          } else if (activeTab === 'setmodules') {
-            getRoleList()
-          } else if (activeTab === 'setpeoples') {
-            getPeopleList()
-          }
-        }
+      if (result.data.list.length >= 1) {
+        const roleId = result.data.list[0].id || -1
+        setCurrRoleId(roleId)
+        setRoleType(result.data.list[0].type)
+        // currRoleId 变化后由 useEffect 自动触发对应页签的取数
       }
     })
   }
@@ -198,17 +194,8 @@ export default function RoleManage() {
   const handleCurrentIndex = (id, type) => {
     setCurrRoleId(id)
     setRoleType(type)
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      pageNo: 1,
-    })
-    if (activeTab === 'stepTree') {
-      getTreeList()
-    } else if (activeTab === 'setmodules') {
-      getRoleList()
-    } else if (activeTab === 'setpeoples') {
-      getPeopleList()
-    }
+    // 切换角色时重置搜索关键字和页码，useEffect 自动取数
+    setPeopleSearchKey({ pageNo: 1, pageSize: peopleSearchKey.pageSize })
   }
 
   const handleCheckModify = (values) => {
@@ -248,7 +235,7 @@ export default function RoleManage() {
   const handleRoleDelete = (id) => {
     fetchRoleDelete({ id: id }, (result) => {
       message.success(result.msg)
-      getData('init')
+      getData()
     })
   }
 
@@ -262,18 +249,16 @@ export default function RoleManage() {
   const handleDelete = (id) => {
     fetchRoleDeletePeople({ id: id, roleId: currRoleId }, (result) => {
       message.success(result.msg)
-      getPeopleList(currRoleId)
+      // 删除后按当前条件刷新（闭包中的 peopleSearchKey 此时是最新的）
+      getPeopleList()
     })
   }
 
   const handleSearch = (e) => {
     e.stopPropagation()
     const keyword = form.getFieldValue('key')
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      keyword: keyword,
-    })
-    getPeopleList(currRoleId)
+    // 搜索时重置到第一页，useEffect 自动取数
+    setPeopleSearchKey({ pageNo: 1, pageSize: peopleSearchKey.pageSize, keyword })
   }
 
   const handleOk = () => {
@@ -284,15 +269,8 @@ export default function RoleManage() {
       if (result.data.list.length >= 1) {
         const roleId = result.data.list[0].id || -1
         setCurrRoleId(roleId)
-        const type = result.data.list[0].type
-        setRoleType(type)
-        if (activeTab === 'stepTree') {
-          getTreeList()
-        } else if (activeTab === 'setmodules') {
-          getRoleList()
-        } else if (activeTab === 'setpeoples') {
-          getPeopleList()
-        }
+        setRoleType(result.data.list[0].type)
+        // currRoleId 变化后由 useEffect 自动触发取数
       }
     })
   }
@@ -302,20 +280,13 @@ export default function RoleManage() {
   }
 
   const pageChange = (newPage) => {
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      pageNo: newPage,
-    })
-    getPeopleList(currRoleId)
+    // useEffect 自动取数
+    setPeopleSearchKey({ ...peopleSearchKey, pageNo: newPage })
   }
 
   const pageSizeChange = (e, pageSize) => {
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      pageNo: 1,
-      pageSize: pageSize,
-    })
-    getPeopleList(currRoleId)
+    // 改条数时重置到第一页，useEffect 自动取数
+    setPeopleSearchKey({ ...peopleSearchKey, pageNo: 1, pageSize })
   }
 
   const buttonList = (id, parentid) => {
