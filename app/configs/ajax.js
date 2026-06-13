@@ -14,6 +14,8 @@ export const setNavigate = (nav) => {
 
 function logOut(text) {
   message.warning(text || '用户登录过期或从其他浏览器登录')
+  // 鉴权失败时清除页签缓存，避免下次登录恢复到异常状态
+  sessionStorage.removeItem('tabList')
   if (navigate) {
     navigate('/login')
   } else {

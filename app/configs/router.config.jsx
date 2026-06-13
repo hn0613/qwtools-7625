@@ -2,6 +2,7 @@ import React from 'react'
 import { createBrowserRouter, Navigate, RouterProvider, useNavigate } from 'react-router-dom'
 import { set } from '@config'
 import { setNavigate } from '@configs/ajax'
+import { HOME_PATH } from '@configs/routeConfig'
 
 import App from '@pages/base/app'
 import Example from '@pages/base/example'
@@ -37,10 +38,10 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Example />,
+        element: <Navigate to={HOME_PATH} replace />,
       },
       {
-        path: 'desk$/index',
+        path: HOME_PATH,
         element: <Example />,
       },
       {

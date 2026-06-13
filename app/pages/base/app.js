@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
 import { message, ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { validateTickit } from '@configs/common'
+import { getRouteTitle, isExcludedPath } from '@configs/routeConfig'
+import { updateTabList } from '@actions/tabList'
 import { menu, staff, loginByKey } from '@apis/common'
 import '@styles/base.less'
 
 import Header from './app/header'
 import LeftNav from './app/leftNav'
+import TabList from './app/tabList'
 
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
   const [menuStyle, setMenuStyle] = useState(false)
   const [leftNav, setLeftNav] = useState([])
   const [topMenuReskey, setTopMenuReskey] = useState('platformManage')
@@ -31,6 +36,20 @@ export default function App() {
       setMenuStyle(true)
     }
   }, [])
+
+  // 监听路由变化，自动创建或激活页签
+  useEffect(() => {
+    if (!idRenderChild) return
+    const { pathname } = location
+    // 排除登录、404 等不进入页签体系的路径
+    if (isExcludedPath(pathname)) return
+    // 获取路径对应的页面标题，未知路径不创建页签
+    const title = getRouteTitle(pathname)
+    if (!title) return
+    // 用去掉前导斜杠的路径作为页签 key（与菜单 resKey 保持一致）
+    const key = pathname.replace(/^\//, '')
+    dispatch(updateTabList({ key, title }))
+  }, [location.pathname, idRenderChild, dispatch])
 
   function init() {
     message.config({
@@ -148,6 +167,7 @@ export default function App() {
             topMenuReskey={topMenuReskey}
           />
         )}
+        {idRenderChild && !isIframe && <TabList />}
         <div className={isIframe ? 'boxed isIframe' : 'boxed'}>
           <div className={menuStyle ? 'boxed boxed-mini' : 'boxed'}>
             <div id="content-container" className="content-container">

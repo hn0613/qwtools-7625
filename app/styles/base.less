@@ -580,7 +580,7 @@ body button + button,
   }
 }
 .tab.ant-tabs-line{/*margin-left: @space-big;*/
-  .ant-tabs-bar{padding:0; 
+  .ant-tabs-bar{padding:0;
     .ant-tabs-nav-container{margin-bottom: -1px;
       .ant-tabs-nav{
         .ant-tabs-tab{ padding:0; border: 0;}
@@ -589,6 +589,39 @@ body button + button,
     }
   }
 }
+
+// 多页签导航条样式
+.tab-list-container{
+  position: relative;
+  padding-left: @g-left-width-base;
+  background: #fff;
+  border-bottom: @border-split;
+  .ant-tabs{
+    margin-bottom: 0;
+    .ant-tabs-nav{
+      margin-bottom: 0;
+      &::before{ border-bottom: none; }
+    }
+    .ant-tabs-tab{
+      padding: 4px @space-big;
+      font-size: @font-size-base;
+      border-radius: 0;
+      background: @background-color-base;
+      border: @border-split;
+      border-bottom: none;
+      transition: none;
+      + .ant-tabs-tab{ margin-left: 2px; }
+      .ant-tabs-tab-remove{ margin-left: @space-sm; font-size: 10px; }
+    }
+    .ant-tabs-tab-active{
+      background: #fff;
+      border-bottom: 1px solid #fff;
+      margin-bottom: -1px;
+    }
+  }
+}
+.boxed-mini .tab-list-container{ padding-left: @g-left-width-mini; }
+.isIframe .tab-list-container{ display: none; }
 
 //用户信息样式
 .user{margin-top: @space-big;
