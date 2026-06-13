@@ -18,9 +18,13 @@ const ProtectedRoute = ({ children }) => {
   React.useEffect(() => {
     setNavigate(navigate)
   }, [navigate])
-  
+
   const token = sessionStorage.getItem('token')
-  if (!token) {
+  const query = new URLSearchParams(window.location.search)
+  const hasTicket = query.get('ticket')
+  const hasKey = query.get('key')
+
+  if (!token && !hasTicket && !hasKey) {
     return <Navigate to="/login" replace />
   }
   return children

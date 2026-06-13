@@ -17,48 +17,40 @@ function Login() {
   const [show, setShow] = useState(true)
 
   function handleSubmit(values) {
-    console.log('handleSubmit 被调用, values:', values)
     form.validateFields().then((formValues) => {
-      console.log('表单验证成功, formValues:', formValues)
       setLoading(true)
       formValues.password = md5(formValues.password)
-      console.log('准备调用登录接口, 登录数据:', formValues)
       login(formValues, (res) => {
-        console.log('登录成功, res:', res)
         sessionStorage.setItem('token', res.data.token)
         sessionStorage.setItem('ticket', res.data.ticket)
-        console.log('准备调用菜单接口')
         menu({}, (response) => {
-          console.log('菜单接口成功, response:', response)
           const nav = response.data.list || []
           if (nav && nav[0]) {
             sessionStorage.setItem('gMenuList', JSON.stringify(nav))
             sessionStorage.setItem('topMenuReskey', nav[0].resKey)
             sessionStorage.setItem('leftNav', JSON.stringify(nav))
-
-            console.log('准备调用用户信息接口')
             staff({ usercode: formValues.username }, (resp) => {
-              console.log('用户信息接口成功, resp:', resp)
               sessionStorage.setItem('userinfo', JSON.stringify(resp.data))
-              console.log('准备跳转到首页')
-              navigate('/')
+              const params = new URLSearchParams(window.location.search)
+              const redirect = params.get('redirect') || '/'
+              navigate(redirect, { replace: true })
             }, (r) => {
-              console.error('用户信息接口失败, r:', r)
-              message.warning(r.msg)
+              message.warning(r.msg || '获取用户信息失败')
               setLoading(false)
             })
+          } else {
+            message.warning('该账户没有任何菜单权限')
+            setLoading(false)
           }
         }, (r) => {
-          console.error('菜单接口失败, r:', r)
+          message.warning(r.msg || '获取菜单失败')
           setLoading(false)
         })
       }, (res) => {
-        console.error('登录接口失败, res:', res)
-        message.warning(res.msg)
+        message.warning(res.msg || '登录失败')
         setLoading(false)
       })
-    }).catch((error) => {
-      console.error('表单验证失败:', error)
+    }).catch(() => {
       message.error('请检查输入信息')
       setLoading(false)
     })
@@ -85,16 +77,12 @@ function Login() {
                 <Col span={8} />
                 <Col span={8}>
                   <Spin spinning={loading}>
-                    <Form 
-                      form={form} 
+                    <Form
+                      form={form}
                       onFinish={(values) => {
-                        console.log('Form onFinish 被触发, values:', values)
                         handleSubmit(values)
                       }}
-                      onValuesChange={(changedValues) => {
-                        console.log('表单值变化:', changedValues)
-                      }}
-                      initialValues={{ username: 'username', password: '123456' }}
+                      initialValues={{ username: '', password: '' }}
                     >
                       <Form.Item name="username" rules={[
                         {

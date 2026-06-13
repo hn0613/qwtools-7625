@@ -8,6 +8,16 @@ const { CancelToken } = axios
 const prefix = 'usercenter'
 const option = { baseURL: mockURL }
 
+function handleLoginExpired(text) {
+  sessionStorage.clear()
+  message.warning(text || '用户登录过期或从其他浏览器登录')
+  const currentPath = window.location.pathname + window.location.search
+  const loginUrl = currentPath && currentPath !== '/'
+    ? `/login?redirect=${encodeURIComponent(currentPath)}`
+    : '/login'
+  window.location.replace(loginUrl)
+}
+
 function createApi(api, options) {
   const obj = parseQueryString(window.location.href)
   let url = api
@@ -82,9 +92,9 @@ function createApi(api, options) {
                 failure(response)
               } else {
                 if (response.msg === '系统内部错误!') {
-                  // message.error(response.msg)
+                  message.error(response.msg)
                 } else {
-                  // message.warning(response.msg)
+                  message.warning(response.msg)
                 }
               }
               break
@@ -92,27 +102,23 @@ function createApi(api, options) {
             case -1: {
               if (typeof failure === 'function') {
                 failure(response)
-              } else {
-                // logOut(response.msg)
               }
+              handleLoginExpired(response.msg)
               break
             }
             default: {
               if (typeof failure === 'function') {
                 failure(response)
               } else {
-                // logOut()
+                handleLoginExpired()
               }
             }
           }
         })
         .catch((e) => {
           if (axios.isCancel(e)) {
-            if (process.env.NODE_ENV !== 'production') {
-              console.log('Request canceled', e.message)
-            }
+            // 请求被取消
           } else {
-            console.dir(e)
             if (typeof failure === 'function') {
               if (e.code === 'ECONNABORTED') {
                 failure({

@@ -20,12 +20,11 @@ function Header({ gMenuList, topMenuClick, topMenuReskey }) {
       content: '确认退出登录吗？',
       onOk() {
         logout({}, (result) => {
-          if (result.status === 1) {
-            sessionStorage.clear()
-            navigate('/login')
-          } else {
-            message.warning(result.msg)
-          }
+          sessionStorage.clear()
+          navigate('/login', { replace: true })
+        }, () => {
+          sessionStorage.clear()
+          navigate('/login', { replace: true })
         })
       },
     })

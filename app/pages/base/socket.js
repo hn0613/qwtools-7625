@@ -5,7 +5,6 @@ import { connect } from 'react-redux'
 
 class SocketOn extends Component {
   componentDidMount() {
-    console.log('socket didmount')
     this.init()
   }
 

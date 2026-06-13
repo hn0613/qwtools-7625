@@ -12,12 +12,17 @@ export const setNavigate = (nav) => {
   navigate = nav
 }
 
-function logOut(text) {
+export function logOut(text) {
+  sessionStorage.clear()
   message.warning(text || '用户登录过期或从其他浏览器登录')
+  const currentPath = window.location.pathname + window.location.search
+  const loginUrl = currentPath && currentPath !== '/'
+    ? `/login?redirect=${encodeURIComponent(currentPath)}`
+    : '/login'
   if (navigate) {
-    navigate('/login')
+    navigate(loginUrl, { replace: true })
   } else {
-    window.location.hash = '/login'
+    window.location.replace(loginUrl)
   }
 }
 
@@ -204,11 +209,8 @@ export const oftenFetchByPost = (api, options) => {
       })
       .catch((e) => {
         if (axios.isCancel(e)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.log('Request canceled', e.message)
-          }
+          // 请求被取消，忽略
         } else {
-          console.dir(e)
           if (typeof failure === 'function') {
             if (e.code === 'ECONNABORTED') { // 超时的报错
               failure({

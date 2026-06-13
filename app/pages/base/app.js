@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { message, ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import { validateTickit } from '@configs/common'
+import { validateTickit, parseQueryString, _fetchStaff, _fetchNav } from '@configs/common'
 import { menu, staff, loginByKey } from '@apis/common'
 import '@styles/base.less'
 
@@ -40,16 +40,40 @@ export default function App() {
     const query = parseQueryString(window.location.href)
     if (query.ticket) {
       validateTickit({ query, pathname: location.pathname }, (res) => {
+        setGMenuList(JSON.parse(sessionStorage.getItem('gMenuList')))
+        getMenuId(JSON.parse(sessionStorage.getItem('gMenuList')), location.pathname.replace('/', ''))
+        setTopMenuReskey(sessionStorage.getItem('topMenuReskey'))
         setIdRenderChild(true)
       })
     } else if (query.key) {
-      loginByKey({}, (res) => {
+      loginByKey({}, async (res) => {
         sessionStorage.setItem('key', query.key)
+        sessionStorage.setItem('token', query.key)
+        try {
+          await Promise.all([_fetchStaff(), _fetchNav(location.pathname)])
+        } catch (e) {
+          sessionStorage.clear()
+          message.error(e.message || '登录初始化失败')
+          window.location.replace('/login')
+          return
+        }
+        setGMenuList(JSON.parse(sessionStorage.getItem('gMenuList')))
+        getMenuId(JSON.parse(sessionStorage.getItem('gMenuList')), location.pathname.replace('/', ''))
+        setTopMenuReskey(sessionStorage.getItem('topMenuReskey'))
         setIdRenderChild(true)
+      }, (res) => {
+        message.error(res.msg || 'key 验证失败')
+        window.location.replace('/login')
       })
     } else {
-      setGMenuList(JSON.parse(sessionStorage.getItem('gMenuList')))
-      getMenuId(JSON.parse(sessionStorage.getItem('gMenuList')), location.pathname.replace('/', ''))
+      const storedMenu = sessionStorage.getItem('gMenuList')
+      if (!storedMenu) {
+        sessionStorage.clear()
+        window.location.replace('/login')
+        return
+      }
+      setGMenuList(JSON.parse(storedMenu))
+      getMenuId(JSON.parse(storedMenu), location.pathname.replace('/', ''))
       if (topMenuReskey !== sessionStorage.getItem('topMenuReskey')) {
         setTopMenuReskey(sessionStorage.getItem('topMenuReskey'))
       }
@@ -123,19 +147,6 @@ export default function App() {
     } else {
       navigate(item.children[0].resKey)
     }
-  }
-
-  function parseQueryString(url) {
-    const obj = {}
-    if (url.indexOf('?') !== -1) {
-      const str = url.split('?')[1]
-      const strs = str.split('&')
-      strs.map((item, i) => {
-        const arr = strs[i].split('=')
-        obj[arr[0]] = arr[1]
-      })
-    }
-    return obj
   }
 
   return (

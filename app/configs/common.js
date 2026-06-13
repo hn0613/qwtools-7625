@@ -15,55 +15,56 @@ export function parseQueryString(url) {
 }
 
 /* --------------验证ticket并获取用户信息和菜单信息 --------------*/
-const _fetchLoginByTicket = async ticket => new Promise((resolve) => {
+const _fetchLoginByTicket = async ticket => new Promise((resolve, reject) => {
   loginByTicket({ ticket }, (response) => {
     resolve(response.data)
   }, (response) => {
-    const obj = parseQueryString(window.location.href)
-    console.log(obj)
-    if (obj.ticket || obj.mode) {
-      message.info('登录过期或服务不可用')
-    } else {
-      window.location.hash = '/login'
-    }
+    reject(new Error(response.msg || '票据登录失败'))
   })
 })
 
-const _fetchStaff = () => new Promise((resolve) => {
+export const _fetchStaff = () => new Promise((resolve, reject) => {
   staff({}, (res) => {
     const { data } = res
     sessionStorage.setItem('userinfo', JSON.stringify(data))
     resolve()
+  }, (res) => {
+    reject(new Error(res.msg || '获取用户信息失败'))
   })
 })
 
 export const isHasCurrentMenu = (allMenu, pathname) => compare(allMenu, pathname)
 
-const _fetchNav = pathname => new Promise((resolve) => {
-  nav({}, (response) => {
+export const _fetchNav = pathname => new Promise((resolve, reject) => {
+  menu({}, (response) => {
     const { list } = response.data
-    if (list.length === 0) {
-      message.info('该账户没有任何菜单权限，请联系管理员')
-      window.location.hash = '/login'
+    if (!list || list.length === 0) {
+      reject(new Error('该账户没有任何菜单权限，请联系管理员'))
       return
     }
-    sessionStorage.setItem('menu', JSON.stringify(list))
+    sessionStorage.setItem('gMenuList', JSON.stringify(list))
+    sessionStorage.setItem('leftNav', JSON.stringify(list))
+    sessionStorage.setItem('topMenuReskey', list[0].resKey)
     resolve()
+  }, (res) => {
+    reject(new Error(res.msg || '获取菜单失败'))
   })
 })
 
 export const validateTickit = async function validateTickit({ query, pathname }, callback) {
-  const { ticket } = query
-  if (ticket) {
-    const loginInfo = await _fetchLoginByTicket(ticket)
-    sessionStorage.setItem('token', loginInfo.token)
+  try {
+    const { ticket } = query
+    if (ticket) {
+      const loginInfo = await _fetchLoginByTicket(ticket)
+      sessionStorage.setItem('token', loginInfo.token)
+    }
+    await Promise.all([_fetchStaff(), _fetchNav(pathname)])
+    if (typeof callback === 'function') callback()
+  } catch (e) {
+    sessionStorage.clear()
+    message.error(e.message || '登录初始化失败')
+    window.location.replace('/login')
   }
-
-  const _a = _fetchStaff()
-  const _b = _fetchNav(pathname)
-  await _a
-  await _b
-  if (typeof callback === 'function') callback()
 }
 
 function compare(children, pathname) {
@@ -89,7 +90,6 @@ export const getMenuId = (navs, pathname) => {
 export const login = (params, success, failure) => {
   loginApi(params, (response) => {
     sessionStorage.setItem('token', response.data.token)
-    localStorage.setItem('sessionStorage', JSON.stringify(sessionStorage))
     if (typeof success === 'function') success(response)
   }, (response) => {
     if (typeof failure === 'function') failure(response)
@@ -104,19 +104,6 @@ export const fetchBtns = (component, cb) => {
     })
     typeof (cb) === 'function' ? cb(result) : ''
   })
-}
-
-export const isLogin = (nextState, replaceState) => {
-  if (nextState.location.query && nextState.location.query.ticket) {
-    sessionStorage.setItem('token', 'ticket')
-  }
-  if (nextState.location.query && nextState.location.query.key) {
-    sessionStorage.setItem('token', 'key')
-  }
-  const token = sessionStorage.getItem('token')
-  if (!token) {
-    replaceState('/login')
-  }
 }
 
 export const createAjaxAction = (createdApi, startAction, endAction) => (request = {}, resolve, reject, config) => (dispatch) => {
