@@ -14,10 +14,11 @@ export const setNavigate = (nav) => {
 
 function logOut(text) {
   message.warning(text || '用户登录过期或从其他浏览器登录')
+  sessionStorage.clear()
   if (navigate) {
     navigate('/login')
   } else {
-    window.location.hash = '/login'
+    window.location.href = '/login'
   }
 }
 

@@ -1,5 +1,6 @@
 
 import axios from 'axios'
+import { message } from 'antd'
 import { mockURL, /* baseURL, */ path } from '../configs/config'
 import { parseQueryString } from '../configs/common'
 
@@ -7,6 +8,12 @@ const { CancelToken } = axios
 
 const prefix = 'usercenter'
 const option = { baseURL: mockURL }
+
+function logOut(text) {
+  message.warning(text || '用户登录过期或从其他浏览器登录')
+  sessionStorage.clear()
+  window.location.href = '/login'
+}
 
 function createApi(api, options) {
   const obj = parseQueryString(window.location.href)
@@ -92,16 +99,15 @@ function createApi(api, options) {
             case -1: {
               if (typeof failure === 'function') {
                 failure(response)
-              } else {
-                // logOut(response.msg)
               }
+              logOut(response.msg)
               break
             }
             default: {
               if (typeof failure === 'function') {
                 failure(response)
               } else {
-                // logOut()
+                logOut()
               }
             }
           }

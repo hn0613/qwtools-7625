@@ -15,55 +15,58 @@ export function parseQueryString(url) {
 }
 
 /* --------------验证ticket并获取用户信息和菜单信息 --------------*/
-const _fetchLoginByTicket = async ticket => new Promise((resolve) => {
+const _fetchLoginByTicket = ticket => new Promise((resolve, reject) => {
   loginByTicket({ ticket }, (response) => {
     resolve(response.data)
-  }, (response) => {
-    const obj = parseQueryString(window.location.href)
-    console.log(obj)
-    if (obj.ticket || obj.mode) {
-      message.info('登录过期或服务不可用')
-    } else {
-      window.location.hash = '/login'
-    }
+  }, () => {
+    message.warning('登录过期或服务不可用')
+    reject()
   })
 })
 
-const _fetchStaff = () => new Promise((resolve) => {
+const _fetchStaff = () => new Promise((resolve, reject) => {
   staff({}, (res) => {
-    const { data } = res
-    sessionStorage.setItem('userinfo', JSON.stringify(data))
+    sessionStorage.setItem('userinfo', JSON.stringify(res.data))
     resolve()
+  }, () => {
+    reject()
   })
 })
 
 export const isHasCurrentMenu = (allMenu, pathname) => compare(allMenu, pathname)
 
-const _fetchNav = pathname => new Promise((resolve) => {
-  nav({}, (response) => {
+const _fetchNav = () => new Promise((resolve, reject) => {
+  menu({}, (response) => {
     const { list } = response.data
-    if (list.length === 0) {
-      message.info('该账户没有任何菜单权限，请联系管理员')
-      window.location.hash = '/login'
+    if (!list || list.length === 0) {
+      message.warning('该账户没有任何菜单权限，请联系管理员')
+      reject()
       return
     }
-    sessionStorage.setItem('menu', JSON.stringify(list))
+    sessionStorage.setItem('gMenuList', JSON.stringify(list))
+    sessionStorage.setItem('leftNav', JSON.stringify(list))
+    if (list[0]) {
+      sessionStorage.setItem('topMenuReskey', list[0].resKey)
+    }
     resolve()
+  }, () => {
+    reject()
   })
 })
 
 export const validateTickit = async function validateTickit({ query, pathname }, callback) {
-  const { ticket } = query
-  if (ticket) {
-    const loginInfo = await _fetchLoginByTicket(ticket)
-    sessionStorage.setItem('token', loginInfo.token)
+  try {
+    const { ticket } = query
+    if (ticket) {
+      const loginInfo = await _fetchLoginByTicket(ticket)
+      sessionStorage.setItem('token', loginInfo.token)
+    }
+    await Promise.all([_fetchStaff(), _fetchNav()])
+    if (typeof callback === 'function') callback()
+  } catch (e) {
+    sessionStorage.clear()
+    window.location.href = '/login'
   }
-
-  const _a = _fetchStaff()
-  const _b = _fetchNav(pathname)
-  await _a
-  await _b
-  if (typeof callback === 'function') callback()
 }
 
 function compare(children, pathname) {

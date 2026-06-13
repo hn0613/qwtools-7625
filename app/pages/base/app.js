@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { message, ConfigProvider } from 'antd'
+import { message, ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import { validateTickit } from '@configs/common'
+import { validateTickit, parseQueryString } from '@configs/common'
 import { menu, staff, loginByKey } from '@apis/common'
 import '@styles/base.less'
 
@@ -38,29 +38,65 @@ export default function App() {
     })
 
     const query = parseQueryString(window.location.href)
-    if (query.ticket) {
-      validateTickit({ query, pathname: location.pathname }, (res) => {
-        setIdRenderChild(true)
-      })
-    } else if (query.key) {
-      loginByKey({}, (res) => {
-        sessionStorage.setItem('key', query.key)
-        setIdRenderChild(true)
-      })
-    } else {
-      setGMenuList(JSON.parse(sessionStorage.getItem('gMenuList')))
-      getMenuId(JSON.parse(sessionStorage.getItem('gMenuList')), location.pathname.replace('/', ''))
-      if (topMenuReskey !== sessionStorage.getItem('topMenuReskey')) {
-        setTopMenuReskey(sessionStorage.getItem('topMenuReskey'))
-      }
-      setIdRenderChild(true)
-    }
 
     if (query.mode === 'iframe' || query.key) {
       setIsIframe(true)
-    } else {
-      setIsIframe(false)
     }
+
+    if (query.ticket) {
+      validateTickit({ query, pathname: location.pathname }, () => {
+        initMenuState()
+        setIdRenderChild(true)
+      })
+    } else if (query.key) {
+      loginByKey({}, () => {
+        sessionStorage.setItem('key', query.key)
+        Promise.all([
+          new Promise((resolve, reject) => {
+            menu({}, (response) => {
+              const nav = response.data.list || []
+              if (nav.length > 0) {
+                sessionStorage.setItem('gMenuList', JSON.stringify(nav))
+                sessionStorage.setItem('leftNav', JSON.stringify(nav))
+                sessionStorage.setItem('topMenuReskey', nav[0].resKey)
+              }
+              resolve()
+            }, () => reject())
+          }),
+          new Promise((resolve, reject) => {
+            staff({}, (res) => {
+              sessionStorage.setItem('userinfo', JSON.stringify(res.data))
+              resolve()
+            }, () => reject())
+          }),
+        ]).then(() => {
+          initMenuState()
+          setIdRenderChild(true)
+        }).catch(() => {
+          message.warning('初始化失败')
+          sessionStorage.clear()
+          navigate('/login')
+        })
+      }, () => {
+        message.warning('key 验证失败')
+        sessionStorage.clear()
+        navigate('/login')
+      })
+    } else {
+      initMenuState()
+      setIdRenderChild(true)
+    }
+  }
+
+  function initMenuState() {
+    const menuList = JSON.parse(sessionStorage.getItem('gMenuList') || '[]')
+    setGMenuList(menuList)
+    setLeftNav(menuList)
+    const storedTopMenuReskey = sessionStorage.getItem('topMenuReskey')
+    if (storedTopMenuReskey) {
+      setTopMenuReskey(storedTopMenuReskey)
+    }
+    getMenuId(menuList, location.pathname.replace('/', ''))
   }
 
   function getMenuId(nav, pathname) {
@@ -125,38 +161,29 @@ export default function App() {
     }
   }
 
-  function parseQueryString(url) {
-    const obj = {}
-    if (url.indexOf('?') !== -1) {
-      const str = url.split('?')[1]
-      const strs = str.split('&')
-      strs.map((item, i) => {
-        const arr = strs[i].split('=')
-        obj[arr[0]] = arr[1]
-      })
-    }
-    return obj
-  }
-
   return (
     <ConfigProvider locale={zhCN}>
-      <div id="container">
-        {idRenderChild && !isIframe && (
-          <Header
-            gMenuList={gMenuList}
-            topMenuClick={topMenuClick}
-            topMenuReskey={topMenuReskey}
-          />
-        )}
-        <div className={isIframe ? 'boxed isIframe' : 'boxed'}>
-          <div className={menuStyle ? 'boxed boxed-mini' : 'boxed'}>
-            <div id="content-container" className="content-container">
-              <div id="page-content">
-                {idRenderChild ? <Outlet /> : null}
+      {!idRenderChild ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <Spin size="large" />
+        </div>
+      ) : (
+        <div id="container">
+          {!isIframe && (
+            <Header
+              gMenuList={gMenuList}
+              topMenuClick={topMenuClick}
+              topMenuReskey={topMenuReskey}
+            />
+          )}
+          <div className={isIframe ? 'boxed isIframe' : 'boxed'}>
+            <div className={menuStyle ? 'boxed boxed-mini' : 'boxed'}>
+              <div id="content-container" className="content-container">
+                <div id="page-content">
+                  <Outlet />
+                </div>
               </div>
             </div>
-          </div>
-          {idRenderChild && (
             <LeftNav
               location={location}
               leftNavMode={changeMenuStyle}
@@ -164,9 +191,9 @@ export default function App() {
               leftNav={leftNav}
               topMenuReskey={topMenuReskey}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </ConfigProvider>
   )
 }
