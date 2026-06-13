@@ -1,73 +1,89 @@
-
-import React, { Component } from 'react'
-import { Radio, Button, Modal, message } from 'antd'
+import React, { useState, useEffect } from 'react'
+import { Modal, Select, Button, message } from 'antd'
 import { fetchUserSetRole } from '@apis/manage'
 
-const RadioGroup = Radio.Group;
-const RadioButton = Radio.Button;
+const { Option } = Select
 
-export default class roleSelect extends Component {
-  constructor(props) {
-    super(props)
-    this.state = {
-      loading: false,
-      checkedValues: '',
+export default function SelectRole({ visible, onCancel, handleOk, roleList, currentRoleIds, userId }) {
+  const [loading, setLoading] = useState(false)
+  const [selectedRoleIds, setSelectedRoleIds] = useState([])
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedRoleIds((currentRoleIds || []).map(id => String(id)))
     }
-    this.handleSubmit = this.handleSubmit.bind(this)
-    this.onChange = this.onChange.bind(this)
+  }, [visible, currentRoleIds])
+
+  const handleChange = (values) => {
+    setSelectedRoleIds(values)
   }
 
-  componentWillMount() {
-    this.setState({ checkedValues: this.props.values.roleid })
-  }
-
-  componentDidMount() {
-
-  }
-
-  onChange(e) {
-    this.setState({ checkedValues: e.target.value })
-  }
-
-  handleSubmit() {
-    this.setState({ loading: true })
-    this.props.dispatch(fetchUserSetRole({
-      roleid: this.state.checkedValues,
-      id: this.props.currPeopleId,
+  const handleSubmit = () => {
+    if (!roleList || roleList.length === 0) {
+      message.warning('暂无可分配角色，无法提交')
+      return
+    }
+    setLoading(true)
+    fetchUserSetRole({
+      roleid: selectedRoleIds.join(','),
+      id: userId,
     }, (res) => {
       message.success(res.msg)
-      this.setState({ loading: false })
-      this.props.handleOkRole()
-    }))
+      setLoading(false)
+      handleOk()
+    }, (errorRes) => {
+      message.warning(errorRes.msg || '操作失败，请重试')
+      setLoading(false)
+    })
   }
 
-  footer() {
-    return (
-      <div>
-        <Button type="primary" onClick={this.handleSubmit} loading={this.state.loading}>确定</Button>
-        <Button onClick={this.props.onCancel}>取消</Button>
-      </div>
-    )
-  }
-
-  render() {
-    const { select, values, visible, onCancel } = this.props
-    const selectNodes = select.map((item, index) =>
-      <RadioButton value={item.id} key={index}>{item.name} </RadioButton>)
-    return (
-      <Modal
-        visible={visible}
-        title="修改角色类别"
-        onCancel={onCancel}
-        footer={this.footer()}
-        className="modal-header modal-body"
+  const footer = (
+    <div>
+      <Button
+        type="primary"
+        onClick={handleSubmit}
+        loading={loading}
+        disabled={!roleList || roleList.length === 0}
       >
-        <div className="RadioGroup-jxy">
-          <RadioGroup onChange={this.onChange} defaultValue={values.roleid}>
-            {selectNodes}
-          </RadioGroup>
+        确定
+      </Button>
+      <Button onClick={onCancel}>取消</Button>
+    </div>
+  )
+
+  const hasRoles = roleList && roleList.length > 0
+
+  return (
+    <Modal
+      open={visible}
+      title="修改角色"
+      onCancel={onCancel}
+      footer={footer}
+      destroyOnClose
+    >
+      {!hasRoles ? (
+        <div style={{ padding: '20px 0', textAlign: 'center', color: '#999' }}>
+          暂无可分配角色
         </div>
-      </Modal>
-    )
-  }
+      ) : (
+        <div style={{ padding: '10px 0' }}>
+          <Select
+            mode="multiple"
+            style={{ width: '100%' }}
+            placeholder="请选择用户角色"
+            value={selectedRoleIds}
+            onChange={handleChange}
+            showSearch
+            optionFilterProp="children"
+          >
+            {roleList.map(item => (
+              <Option key={String(item.id)} value={String(item.id)}>
+                {item.roleName}
+              </Option>
+            ))}
+          </Select>
+        </div>
+      )}
+    </Modal>
+  )
 }

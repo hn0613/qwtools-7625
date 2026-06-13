@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Spin,
   notification,
@@ -18,6 +18,7 @@ import {
   fetchUserDelete,
   fetchRoleList,
   fetchChangeUserStatus,
+  fetchUserSetRole,
 } from '@apis/manage';
 import TreeList from './treeList';
 import AddPolice from './modal/addPolice';
@@ -54,6 +55,16 @@ export default function UserManage() {
   const [userListResult, setUserListResult] = useState({ list: [], loading: false })
   const [userDetailResult, setUserDetailResult] = useState({ list: [], loading: false })
   const [userRoleSetResult, setUserRoleSetResult] = useState({ list: [], loading: false })
+  const [currentUserRoleIds, setCurrentUserRoleIds] = useState([])
+  const searchKeyRef = useRef(searchKey)
+
+  useEffect(() => {
+    searchKeyRef.current = searchKey
+  }, [searchKey])
+
+  const refreshData = () => {
+    getData(searchKeyRef.current)
+  }
 
   const getData = (key) => {
     fetchUserList(key, (res) => {
@@ -88,7 +99,7 @@ export default function UserManage() {
   const handleChangeStatus = (id, status) => {
     fetchChangeUserStatus({ id: id, status: status }, (res) => {
       message.success(res.msg)
-      getData(searchKey)
+      refreshData()
     })
   }
 
@@ -99,6 +110,34 @@ export default function UserManage() {
       setModuletype('edit')
       setModuletitle('详情')
       setCurrPeopleId(id)
+    })
+  }
+
+  const handleChangeRole = (record) => {
+    if (!userRoleSetResult.list || userRoleSetResult.list.length === 0) {
+      message.warning('暂无可分配角色，请先配置角色')
+      return
+    }
+    setCurrPeopleId(record.id)
+    setCurrentUserRoleIds(record.roleIds || (record.roles || []).map(r => r.id))
+    setRoleVisible(true)
+  }
+
+  const handleRoleOk = () => {
+    setRoleVisible(false)
+    refreshData()
+  }
+
+  const handleRoleCancel = () => {
+    setRoleVisible(false)
+  }
+
+  const handleDeleteUser = (id) => {
+    fetchUserDelete({ id: id }, (res) => {
+      message.success(res.msg)
+      refreshData()
+    }, (errorRes) => {
+      message.warning(errorRes.msg || '删除失败，请重试')
     })
   }
 
@@ -278,6 +317,12 @@ export default function UserManage() {
                   <span className="ant-divider" />
                 </span>
               ) : null}
+              {btnRights.edit ? (
+                <span>
+                  <a onClick={() => handleChangeRole(record)}>修改角色</a>
+                  <span className="ant-divider" />
+                </span>
+              ) : null}
               {btnRights.freeze ? (
                 <span>
                   <Popconfirm
@@ -286,6 +331,18 @@ export default function UserManage() {
                     onConfirm={() => handleChangeStatus(record.id, `${record.status}`)}
                   >
                     <a>{record.status ? '解冻账户' : '冻结账户'}</a>
+                  </Popconfirm>
+                  <span className="ant-divider" />
+                </span>
+              ) : null}
+              {btnRights.delete ? (
+                <span>
+                  <Popconfirm
+                    title="确认删除该用户？"
+                    placement="left"
+                    onConfirm={() => handleDeleteUser(record.id)}
+                  >
+                    <a>删除</a>
                   </Popconfirm>
                 </span>
               ) : null}
@@ -394,6 +451,17 @@ export default function UserManage() {
           type={moduletype}
           onCancel={handleCancel}
           roleList={userRoleSetResult.list || []}
+        />
+      ) : null}
+
+      {RoleVisible ? (
+        <SelectRole
+          visible={RoleVisible}
+          onCancel={handleRoleCancel}
+          handleOk={handleRoleOk}
+          roleList={userRoleSetResult.list || []}
+          currentRoleIds={currentUserRoleIds}
+          userId={currPeopleId}
         />
       ) : null}
     </div>
