@@ -14,45 +14,44 @@ function TabList() {
     navigate(activeKey)
   }, [dispatch, navigate])
 
-  const onEdit = useCallback((targetKey, action) => {
-    if (action === 'remove') {
-      remove(targetKey)
-    }
-  }, [])
-
   const remove = useCallback((targetKey) => {
-    let delIndex
-    let activeKey
-
     if (targetKey === tabList.activeKey) {
-      tabList.list.map((tab, index) => {
+      let delIndex = 0
+      tabList.list.forEach((tab, index) => {
         if (tab.key === targetKey) {
           delIndex = index
         }
       })
-      activeKey = tabList.list[delIndex + 1] ?
-        tabList.list[delIndex + 1].key : (tabList.list[delIndex - 1] ?
-          tabList.list[delIndex - 1].key : '')
-      navigate(activeKey)
+      const nextTab = tabList.list[delIndex + 1] || tabList.list[delIndex - 1]
+      navigate(nextTab ? nextTab.key : '/')
     }
     dispatch(deleteTabFromList({ targetKey }))
   }, [tabList, navigate, dispatch])
 
+  const onEdit = useCallback((targetKey, action) => {
+    if (action === 'remove') {
+      remove(targetKey)
+    }
+  }, [remove])
+
   const items = tabList.list.map(tab => ({
     key: tab.key,
     label: tab.title,
-    children: tab.content,
+    closable: tab.closable !== false,
   }))
 
   return (
-    <Tabs
-      hideAdd
-      onChange={onChange}
-      activeKey={tabList.activeKey}
-      type="editable-card"
-      onEdit={onEdit}
-      items={items}
-    />
+    <div className="tab-list-wrapper">
+      <Tabs
+        hideAdd
+        onChange={onChange}
+        activeKey={tabList.activeKey}
+        type="editable-card"
+        onEdit={onEdit}
+        items={items}
+        size="small"
+      />
+    </div>
   )
 }
 

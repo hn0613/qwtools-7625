@@ -1,23 +1,58 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
 import { message, ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { validateTickit } from '@configs/common'
 import { menu, staff, loginByKey } from '@apis/common'
+import { updateTabList } from '@actions/tabList'
 import '@styles/base.less'
 
 import Header from './app/header'
 import LeftNav from './app/leftNav'
+import TabList from './app/tabList'
 
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
   const [menuStyle, setMenuStyle] = useState(false)
   const [leftNav, setLeftNav] = useState([])
   const [topMenuReskey, setTopMenuReskey] = useState('platformManage')
   const [gMenuList, setGMenuList] = useState([])
   const [idRenderChild, setIdRenderChild] = useState(false)
   const [isIframe, setIsIframe] = useState(false)
+
+  function getRouteTitle(pathname) {
+    if (pathname === '/' || pathname === '/desk$/index') return '首页'
+    const key = pathname.replace(/^\//, '')
+    const menuData = [
+      ...(JSON.parse(sessionStorage.getItem('gMenuList')) || []),
+      ...(JSON.parse(sessionStorage.getItem('leftNav')) || []),
+    ]
+    function findTitle(items) {
+      for (const item of items) {
+        if (item.resKey === key) return item.resName
+        if (item.children) {
+          const found = findTitle(item.children)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    return findTitle(menuData) || key.split('/').pop().replace(/\$/g, '')
+  }
+
+  useEffect(() => {
+    const pathname = location.pathname
+    const tabKey = (pathname === '/desk$/index') ? '/' : pathname
+    const isHome = tabKey === '/'
+    dispatch(updateTabList({
+      key: tabKey,
+      title: getRouteTitle(pathname),
+      closable: !isHome,
+    }))
+  }, [location.pathname])
 
   useEffect(() => {
     init()
@@ -151,6 +186,7 @@ export default function App() {
         <div className={isIframe ? 'boxed isIframe' : 'boxed'}>
           <div className={menuStyle ? 'boxed boxed-mini' : 'boxed'}>
             <div id="content-container" className="content-container">
+              {idRenderChild && !isIframe && <TabList />}
               <div id="page-content">
                 {idRenderChild ? <Outlet /> : null}
               </div>

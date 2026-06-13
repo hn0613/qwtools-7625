@@ -385,7 +385,22 @@ body{
 .table-content .ant-table-scroll > span
 { .flexcolumn; }
 
-.gtab {display: none;} // 隐藏全局的浏览器历史记录
+.tab-list-wrapper {
+  background: #fff;
+  border-bottom: @border-split;
+  flex: 0 0 auto;
+  .ant-tabs { margin-bottom: 0;
+    .ant-tabs-nav { margin: 0;
+      &::before { border-bottom: none; }
+    }
+    .ant-tabs-tab { padding: 6px 12px; font-size: @font-size-base; transition: none;
+      .ant-tabs-tab-remove { margin-left: 4px; font-size: 10px; opacity: 0.4;
+        &:hover { opacity: 1; }
+      }
+    }
+    .ant-tabs-content-holder { display: none; }
+  }
+}
 /*弹框尺寸*/
 .modal-large { width: 78% !important; }
 .modal-middle { width: 788px !important; }

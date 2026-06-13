@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
 import { Menu, Button, Modal, message, Row, Col, Dropdown } from 'antd'
 import { brandName } from '@config'
 import { logout } from '@apis/common'
+import { clearTabList } from '@actions/tabList'
 
 import EditPassword from './modal/editPassword'
 import UserInfo from './modal/userInfo'
@@ -11,6 +13,7 @@ const { confirm } = Modal
 
 function Header({ gMenuList, topMenuClick, topMenuReskey }) {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const [userInfo, setUserInfo] = useState(false)
   const [editPasswordMadalIsOpen, setEditPasswordMadalIsOpen] = useState(false)
 
@@ -21,6 +24,7 @@ function Header({ gMenuList, topMenuClick, topMenuReskey }) {
       onOk() {
         logout({}, (result) => {
           if (result.status === 1) {
+            dispatch(clearTabList())
             sessionStorage.clear()
             navigate('/login')
           } else {

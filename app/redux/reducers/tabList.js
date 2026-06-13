@@ -17,7 +17,9 @@ const tabListSlice = createSlice({
     updateTabList(state, action) {
       const data = action.payload
       const findList = state.list.find(tab => tab.key === data.key)
-      state.list = findList === undefined ? [...state.list, data] : state.list
+      if (!findList) {
+        state.list.push({ key: data.key, title: data.title, closable: data.closable !== false })
+      }
       state.activeKey = data.key
       state.loading = false
       sessionStorage.setItem('tabList', JSON.stringify({ list: state.list, activeKey: data.key, loading: false }))
@@ -41,15 +43,21 @@ const tabListSlice = createSlice({
         }
       })
       if (state.activeKey === targetKey) {
-        activeKey = list[delIndex] ? list[delIndex].key : (list[delIndex - 1] ? list[delIndex - 1].key : '')
+        activeKey = list[delIndex] ? list[delIndex].key : (list[delIndex - 1] ? list[delIndex - 1].key : '/')
       }
       state.list = list
       state.activeKey = activeKey
       state.loading = false
       sessionStorage.setItem('tabList', JSON.stringify({ list, activeKey, loading: false }))
     },
+    clearTabList(state) {
+      state.list = []
+      state.activeKey = ''
+      state.loading = false
+      sessionStorage.removeItem('tabList')
+    },
   },
 })
 
-export const { requestTabList, updateTabList, updateTabChecked, deleteTabFromList } = tabListSlice.actions
+export const { requestTabList, updateTabList, updateTabChecked, deleteTabFromList, clearTabList } = tabListSlice.actions
 export default tabListSlice.reducer

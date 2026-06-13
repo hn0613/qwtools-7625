@@ -1,1 +1,1 @@
-export { requestTabList, updateTabList, updateTabChecked, deleteTabFromList } from '@reducers/tabList'
+export { requestTabList, updateTabList, updateTabChecked, deleteTabFromList, clearTabList } from '@reducers/tabList'
