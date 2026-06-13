@@ -1,12 +1,10 @@
-import React, { Component } from 'react';
-// import { connect } from 'react-redux'
+import React, { useState, useEffect } from 'react';
 import { Button, Layout, message } from 'antd';
-// import { hashHistory } from 'react-router'
 import {
   fetchModuleList, // 获取模块列表
   fetchModuleDelete, // 删除模块
   fetchModuleDetail, // 获取模块详情
-  fetchChangeModuleStatus, // 修改模块详情
+  fetchChangeModuleStatus, // 修改模块状态
   fetchModuleUpdateDetail, // 修改模块详情
   fetchModuleAdd, // 新增模块
   fetchButtonList, // 按钮权限列表
@@ -20,299 +18,233 @@ import AddButtonModal from './modal/addButtonModal' // 新增修改按钮权限
 
 const { Content } = Layout
 
-// 声明组件  并对外输出
-export default class userManage extends Component {
-  // 初始化页面常量 绑定事件方法
-  constructor(props) {
-    super(props)
-    this.state = {
-      title: '新增菜单',
-      pid: '',
-      itemId: '',
-      type: '',
-      values: {
-        id: '',
-        key: '',
-        module: '',
-        name: '',
-        sort: '',
-        type: '',
-      },
-      moduleDetailResult: {
-        id: '',
-        key: '',
-        module: '',
-        name: '',
-        sort: '',
-        type: '',
-      },
-      Visible: false,
-      buttonVisible: false,
-      addButtonVisible: false,
-      buttonEditState: '', // 按钮是处于修改还是新增新增状态
-      butttonListLoading: false, // 按钮列表加载状态
-      buttonEditData: {},
-      buttonDataSource: [], // 按钮列表数据
-      tableListLoading: false, // 表格列表加载状态
-      tableDataSource: [], // 表格列表列表数据
-    };
-    this.moduleAdd = this.moduleAdd.bind(this);
-    this.handleOk = this.handleOk.bind(this);
-    this.handleCancel = this.handleCancel.bind(this);
-    this.handleDelete = this.handleDelete.bind(this);
-    this.handleModify = this.handleModify.bind(this);
-    this.handleAddNode = this.handleAddNode.bind(this);
-    this.handleChangeStatus = this.handleChangeStatus.bind(this);
-    this.buttonList = this.buttonList.bind(this);
-    this.addButton = this.addButton.bind(this);
-    this.handleAdd = this.handleAdd.bind(this);
-    this.handleAddCancel = this.handleAddCancel.bind(this);
-    this.cancelButton = this.cancelButton.bind(this);
-    this.editButton = this.editButton.bind(this);
+export default function ModuleManage() {
+  // === 表格数据 ===
+  const [tableDataSource, setTableDataSource] = useState([])
+  const [tableListLoading, setTableListLoading] = useState(false)
+
+  // === 菜单弹窗状态（独立） ===
+  const [menuDrawerVisible, setMenuDrawerVisible] = useState(false)
+  const [menuDrawerTitle, setMenuDrawerTitle] = useState('新增菜单')
+  const [menuDrawerType, setMenuDrawerType] = useState('add')
+  const [menuDrawerPid, setMenuDrawerPid] = useState('')
+  const [menuItemId, setMenuItemId] = useState('')
+  const [menuDetailData, setMenuDetailData] = useState({})
+
+  // === 按钮列表弹窗状态（独立） ===
+  const [buttonDrawerVisible, setButtonDrawerVisible] = useState(false)
+  const [buttonMenuId, setButtonMenuId] = useState('')
+  const [buttonListLoading, setButtonListLoading] = useState(false)
+  const [buttonDataSource, setButtonDataSource] = useState([])
+
+  // === 按钮编辑弹窗状态（独立） ===
+  const [addButtonDrawerVisible, setAddButtonDrawerVisible] = useState(false)
+  const [addButtonDrawerTitle, setAddButtonDrawerTitle] = useState('新增按钮权限')
+  const [buttonEditState, setButtonEditState] = useState('')
+  const [buttonEditData, setButtonEditData] = useState({})
+
+  // 初始加载
+  useEffect(() => {
+    refreshTableList()
+  }, [])
+
+  // === 刷新函数 ===
+
+  const refreshTableList = () => {
+    setTableListLoading(true)
+    fetchModuleList({}, (result) => {
+      setTableListLoading(false)
+      setTableDataSource(result.data.list)
+    })
   }
 
-  // 组件已经加载到dom中
-  componentWillMount() {
-    // 做判断，如果是超级管理员，才会显示模块管理权限
-    if (!(sessionStorage.getItem('roleName') === '0')) {
-      // if (!(sessionStorage.getItem('roleName') === '超级管理员' && sessionStorage.getItem('usercode') === 'admin')) {
-      // hashHistory.goBack()
-      // return
-    }
-    this.getTableList();
+  const refreshButtonList = (menuId) => {
+    const id = menuId || buttonMenuId
+    setButtonListLoading(true)
+    fetchButtonList({ id }, (result) => {
+      setButtonListLoading(false)
+      setButtonDataSource(result.data.list)
+    })
   }
+
+  // === 菜单操作 ===
 
   // 删除模块
-  handleDelete(id) {
-    fetchModuleDelete({ id: id }, (result) => {
-      message.success(result.msg);
-      this.getTableList();
-    });
+  const handleDelete = (id) => {
+    fetchModuleDelete({ id }, (result) => {
+      message.success(result.msg)
+      refreshTableList()
+    })
   }
 
-  // 修改模块
-  handleModify(id, parentid) {
-    fetchModuleDetail({ id: id }, (result) => {
-      this.setState({
-        Visible: true,
-        title: '修改菜单',
-        pid: parentid,
-        itemId: id,
-        type: 'modify',
-      });
-    });
+  // 修改模块 - 先获取详情再打开弹窗
+  const handleModify = (id, parentid) => {
+    fetchModuleDetail({ id }, (result) => {
+      setMenuDetailData(result.data)
+      setMenuDrawerVisible(true)
+      setMenuDrawerTitle('修改菜单')
+      setMenuDrawerPid(parentid)
+      setMenuItemId(id)
+      setMenuDrawerType('modify')
+    })
   }
 
   // 更改模块状态
-  handleChangeStatus(id, val) {
-    fetchChangeModuleStatus({ id: id, status: val }, (result) => {
-      this.getTableList();
-    });
+  const handleChangeStatus = (id, val) => {
+    fetchChangeModuleStatus({ id, status: val }, () => {
+      refreshTableList()
+    })
   }
 
   // 新增模块
-  moduleAdd() {
-    this.setState({
-      Visible: true,
-      title: '新增菜单',
-      pid: '',
-      type: 'add',
-    });
+  const moduleAdd = () => {
+    setMenuDrawerVisible(true)
+    setMenuDrawerTitle('新增菜单')
+    setMenuDrawerPid('')
+    setMenuDrawerType('add')
+    setMenuDetailData({})
   }
 
-  // 新增模块子菜单
-  handleAddNode(id) {
-    this.setState({
-      Visible: true,
-      title: '新增子菜单',
-      pid: id,
-      type: 'add',
-    });
+  // 新增子菜单
+  const handleAddNode = (id) => {
+    setMenuDrawerVisible(true)
+    setMenuDrawerTitle('新增子菜单')
+    setMenuDrawerPid(id)
+    setMenuDrawerType('add')
+    setMenuDetailData({})
   }
 
-  // form 表单保存后调用
-  handleOk() {
-    this.getTableList();
-    this.setState({ Visible: false });
+  // 菜单保存成功
+  const handleOk = () => {
+    refreshTableList()
+    setMenuDrawerVisible(false)
   }
 
-  // 隐藏新增修改窗口
-  handleCancel() {
-    this.setState({ Visible: false, type: 'add' })
+  // 关闭菜单弹窗
+  const handleCancel = () => {
+    setMenuDrawerVisible(false)
+    setMenuDrawerType('add')
+    setMenuDetailData({})
   }
 
-  // 显示按钮权限窗口
-  buttonList(id, parentid) {
-    this.setState({
-      buttonVisible: true, pid: parentid, itemId: id,
-    }, () => {
-      this.getButtonList()
-    })
+  // === 按钮权限操作 ===
+
+  // 打开按钮权限列表
+  const buttonList = (id) => {
+    setButtonDrawerVisible(true)
+    setButtonMenuId(id)
+    refreshButtonList(id)
   }
 
   // 关闭按钮权限列表
-  cancelButton() {
-    this.setState({
-      buttonVisible: false,
-    })
+  const cancelButton = () => {
+    setButtonDrawerVisible(false)
   }
 
   // 新增按钮权限
-  addButton() {
-    this.setState({
-      buttonEditState: 'add',
-      addButtonVisible: true,
-      title: '新增按钮权限',
-    })
+  const addButton = () => {
+    setButtonEditState('add')
+    setAddButtonDrawerVisible(true)
+    setAddButtonDrawerTitle('新增按钮权限')
   }
 
-  // 新增、修改按钮权限
-  handleAdd(params) {
-    if (this.state.buttonEditState !== 'add') {
-      fetchModuleUpdateDetail({ ...params, parentId: this.state.itemId }, (result) => {
+  // 修改按钮权限
+  const editButton = (params) => {
+    setButtonEditState('edit')
+    setButtonEditData(params)
+    setAddButtonDrawerVisible(true)
+    setAddButtonDrawerTitle('修改按钮权限')
+  }
+
+  // 保存按钮权限
+  const handleAdd = (params) => {
+    if (buttonEditState !== 'add') {
+      fetchModuleUpdateDetail({ ...params, parentId: buttonMenuId }, (result) => {
         message.success(result.msg)
-        this.handleAddCancel()
+        handleAddCancel()
       })
     } else {
-      fetchModuleAdd({ ...params, parentId: this.state.itemId }, (result) => {
+      fetchModuleAdd({ ...params, parentId: buttonMenuId }, (result) => {
         message.success(result.msg)
-        this.handleAddCancel()
+        handleAddCancel()
       })
     }
   }
 
-  // 取消保存
-  handleAddCancel() {
-    this.setState({
-      addButtonVisible: false,
-      buttonEditData: {},
-    }, () => {
-      this.getButtonList()
-    })
+  // 关闭按钮编辑弹窗并刷新列表
+  const handleAddCancel = () => {
+    setAddButtonDrawerVisible(false)
+    setButtonEditData({})
+    refreshButtonList()
   }
 
-  // 修改按钮数据
-  editButton(params) {
-    this.setState({
-      buttonEditState: 'edit',
-      buttonEditData: params,
-      addButtonVisible: true,
-      title: '修改按钮权限',
-    })
-  }
+  // === 渲染 ===
 
-  getButtonList = () => {
-    this.setState({
-      butttonListLoading: true,
-    }, () => {
-      fetchButtonList({ id: this.state.itemId }, (result) => {
-        this.setState({
-          butttonListLoading: false,
-          buttonDataSource: result.data.list,
-        })
-      })
-    })
-  }
-  getTableList() {
-    this.setState({
-      tableListLoading: true,
-    }, () => {
-      fetchModuleList({}, (result) => {
-        this.setState({
-          tableListLoading: false,
-          tableDataSource: result.data.list,
-        })
-      })
-    })
-  }
+  const menuValues = menuDrawerType === 'modify' ? menuDetailData : {}
 
-
-  footer() {
-    return (
-      <div>
-        <Button type="primary">确定</Button>
-        <Button>取消</Button>
-      </div>
-    )
-  }
-
-  render() {
-    const {
-      buttonEditState, buttonEditData, butttonListLoading, buttonDataSource, tableListLoading, tableDataSource, moduleDetailResult,
-    } = this.state
-    const thevalue = this.state.type === 'modify' ? moduleDetailResult : this.state.values
-    return (
-      <div className="page page-scrollfix page-usermanage page-modulemanage">
-        <Layout>
-          <Layout className="page-body">
-            <Content>
-              {/* <div className="page-header">
-                <div className="text-right">
-                  <Button type="primary" onClick={this.moduleAdd} > 新增模块</Button>
-                </div>
-              </div> */}
-              <div className="page-content">
-                <ModuleList
-                  dataSource={tableDataSource}
-                  loading={tableListLoading}
-                  // scroll={{ y: global.$GLOBALCONFIG.PAGEHEIGHT - 165 }}
-                  onDelete={this.handleDelete}
-                  onModify={this.handleModify}
-                  onUpdataStatus={this.handleChangeStatus}
-                  onAddNode={this.handleAddNode}
-                  buttonList={this.buttonList}
-                />
+  return (
+    <div className="page page-scrollfix page-usermanage page-modulemanage">
+      <Layout>
+        <Layout className="page-body">
+          <Content>
+            <div className="page-content">
+              <ModuleList
+                dataSource={tableDataSource}
+                loading={tableListLoading}
+                onDelete={handleDelete}
+                onModify={handleModify}
+                onUpdataStatus={handleChangeStatus}
+                onAddNode={handleAddNode}
+                buttonList={buttonList}
+              />
+            </div>
+            <div className="page-footer">
+              <div className="page-footer-buttons">
+                <Button type="primary" onClick={moduleAdd}> 新增模块</Button>
               </div>
-              <div className="page-footer">
-                <div className="page-footer-buttons">
-                  <Button type="primary" onClick={this.moduleAdd} > 新增模块</Button>
-                </div>
-              </div>
-            </Content>
-          </Layout>
+            </div>
+          </Content>
         </Layout>
-        {
-          this.state.Visible ?
-            <ModuleModal
-              handleOk={this.handleOk}
-              visible={this.state.Visible}
-              title={this.state.title}
-              pid={this.state.pid}
-              itemId={this.state.itemId}
-              values={thevalue}
-              type={this.state.type}
-              onCancel={this.handleCancel}
-            />
-            : null
-        }
-        {
-          this.state.buttonVisible ?
-            <ButtonModal
-              visible={this.state.buttonVisible}
-              pid={this.state.pid}
-              itemId={this.state.itemId}
-              addButton={this.addButton}
-              cancelButton={this.cancelButton}
-              editButton={this.editButton}
-              listLoading={butttonListLoading}
-              dataSource={buttonDataSource}
-              updateList={() => { this.getButtonList() }}
-            />
-            : null
-        }
-        {
-          this.state.addButtonVisible ?
-            <AddButtonModal
-              title={this.state.title}
-              visible={this.state.addButtonVisible}
-              onCancel={this.handleAddCancel}
-              handleAdd={this.handleAdd}
-              state={buttonEditState}
-              buttonEditData={buttonEditData}
-            />
-            : null
-        }
-      </div>
-    )
-  }
+      </Layout>
+      {
+        menuDrawerVisible ?
+          <ModuleModal
+            handleOk={handleOk}
+            visible={menuDrawerVisible}
+            title={menuDrawerTitle}
+            pid={menuDrawerPid}
+            itemId={menuItemId}
+            values={menuValues}
+            type={menuDrawerType}
+            onCancel={handleCancel}
+          />
+          : null
+      }
+      {
+        buttonDrawerVisible ?
+          <ButtonModal
+            visible={buttonDrawerVisible}
+            addButton={addButton}
+            cancelButton={cancelButton}
+            editButton={editButton}
+            listLoading={buttonListLoading}
+            dataSource={buttonDataSource}
+            updateList={() => { refreshButtonList() }}
+          />
+          : null
+      }
+      {
+        addButtonDrawerVisible ?
+          <AddButtonModal
+            title={addButtonDrawerTitle}
+            visible={addButtonDrawerVisible}
+            onCancel={handleAddCancel}
+            handleAdd={handleAdd}
+            state={buttonEditState}
+            buttonEditData={buttonEditData}
+          />
+          : null
+      }
+    </div>
+  )
 }

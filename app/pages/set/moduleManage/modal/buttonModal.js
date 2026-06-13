@@ -28,17 +28,6 @@ export default class pop extends Component {
     this.deleteButton = this.deleteButton.bind(this)
   }
 
-  componentWillMount() {
-    // this.getList()
-  }
-
-  // 组件已经加载到dom中
-  componentDidMount() {}
-
-  componentWillReceiveProps(nextProps) {
-    // this.getList()
-  }
-
   // 删除
   deleteButton = (id) => {
     fetchModuleDelete({ id: id }, (result) => {
