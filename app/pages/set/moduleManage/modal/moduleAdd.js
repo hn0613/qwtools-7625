@@ -9,26 +9,29 @@ import {
 
 const FormItem = Form.Item
 
-export default function ModuleAdd({ visible, onCancel, title, pid, type, itemId, values, handleOk }) {
+export default function ModuleAdd({ visible, onCancel, title, formType, parentId, itemId, initialValues, handleOk }) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
+  // 每次弹窗打开时，先重置再回填，保证表单状态干净
   useEffect(() => {
-    form.resetFields()
-  }, [visible])
-
-  useEffect(() => {
-    if (pid) {
+    if (visible) {
+      form.resetFields()
       form.setFieldsValue({
-        parentId: pid,
+        parentId: initialValues.parentId ?? parentId ?? '',
+        resName: initialValues.resName || '',
+        sort: initialValues.sort || '0',
+        resModule: initialValues.resModule || '',
+        resKey: initialValues.resKey || '',
+        resIcon: initialValues.resIcon || '',
       })
     }
-  }, [pid])
+  }, [visible])
 
   const handleSubmit = (formValues) => {
     const values = { ...formValues, resType: 1 }
     setLoading(true)
-    if (type === 'modify') {
+    if (formType === 'modify') {
       fetchModuleUpdateDetail({ ...values, id: itemId }, (result) => {
         message.success(result.msg)
         setLoading(false)
@@ -57,15 +60,6 @@ export default function ModuleAdd({ visible, onCancel, title, pid, type, itemId,
     wrapperCol: { span: 17 },
   }
 
-  const initialValues = {
-    parentId: pid || '',
-    resName: values.resName || '',
-    sort: `${values.sort || '0'}`,
-    resModule: values.resModule || '',
-    resKey: `${values.resKey || ''}`,
-    resIcon: `${values.resIcon || ''}`,
-  }
-
   return (
     <Drawer
       visible={visible}
@@ -80,7 +74,6 @@ export default function ModuleAdd({ visible, onCancel, title, pid, type, itemId,
           layout="horizontal"
           autoComplete="off"
           onFinish={handleSubmit}
-          initialValues={initialValues}
         >
           <FormItem {...formItemLayout} label="上级菜单id" hasFeedback>
             <Form.Item name="parentId" noStyle>

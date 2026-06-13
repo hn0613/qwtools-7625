@@ -67,6 +67,7 @@
     "vite": "^6.0.5"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.2.5",
     "@reduxjs/toolkit": "^2.2.0",
     "antd": "^6.3.2",
     "axios": "^1.7.9",

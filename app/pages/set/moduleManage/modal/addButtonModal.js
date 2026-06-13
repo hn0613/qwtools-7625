@@ -8,8 +8,16 @@ const FormItem = Form.Item;
 export default function AddButtonModal({ visible, onCancel, title, buttonEditData, state, handleAdd }) {
   const [form] = Form.useForm()
 
+  // 每次弹窗打开时，先重置再回填，保证表单状态干净
   useEffect(() => {
-    form.resetFields()
+    if (visible) {
+      form.resetFields()
+      form.setFieldsValue({
+        resName: buttonEditData.resName || '',
+        sort: `${buttonEditData.sort || '0'}`,
+        resKey: `${buttonEditData.resKey || ''}`,
+      })
+    }
   }, [visible])
 
   const handleSubmit = (values) => {
@@ -36,12 +44,6 @@ export default function AddButtonModal({ visible, onCancel, title, buttonEditDat
     wrapperCol: { span: 17 },
   }
 
-  const initialValues = {
-    resName: buttonEditData.resName || '',
-    sort: `${buttonEditData.sort || '0'}`,
-    resKey: `${buttonEditData.resKey || ''}`,
-  }
-
   return (
     <Drawer
       visible={visible}
@@ -56,7 +58,6 @@ export default function AddButtonModal({ visible, onCancel, title, buttonEditDat
           layout="horizontal"
           autoComplete="off"
           onFinish={handleSubmit}
-          initialValues={initialValues}
         >
           <FormItem {...formItemLayout} label="新增按钮名称" hasFeedback>
             <Form.Item
