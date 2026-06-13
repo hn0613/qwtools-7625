@@ -87,9 +87,10 @@ export default function RoleManage() {
     setActiveTab(e.target.value)
   }
 
-  const getData = (state) => {
+  const getData = (state, overrideRoleName) => {
+    const params = overrideRoleName !== undefined ? { roleName: overrideRoleName } : { ...searchKey }
     setSpinloading(true)
-    fetchRoleList({ ...searchKey }, (result) => {
+    fetchRoleList(params, (result) => {
       setSpinloading(false)
       setRoleListResult(result.data)
       if (state === 'init') {
@@ -99,21 +100,21 @@ export default function RoleManage() {
           const type = result.data.list[0].type
           setRoleType(type)
           if (activeTab === 'stepTree') {
-            getTreeList()
+            getTreeList(roleId)
           } else if (activeTab === 'setmodules') {
-            getRoleList()
+            getRoleList(roleId)
           } else if (activeTab === 'setpeoples') {
-            getPeopleList()
+            getPeopleList({ pageNo: 1, pageSize: peopleSearchKey.pageSize, roleId })
           }
         }
       }
     })
   }
 
-  const getRoleDetail = () => {
+  const getRoleDetail = (roleId) => {
     setTabsloading(true)
     fetchRoleDetail(
-      { id: currRoleId },
+      { id: roleId !== undefined ? roleId : currRoleId },
       (res) => {
         setResultCkecked(res.data.resourceIds || [])
         setTabsloading(false)
@@ -126,10 +127,11 @@ export default function RoleManage() {
     )
   }
 
-  const getTreeList = () => {
+  const getTreeList = (roleId) => {
+    const id = roleId !== undefined ? roleId : currRoleId
     setTreeloading(true)
     fetchTreeList(
-      { id: currRoleId },
+      { id },
       (res) => {
         const newCheckedIdArr = {}
         res.data &&
@@ -148,8 +150,9 @@ export default function RoleManage() {
     )
   }
 
-  const getRoleList = () => {
-    fetchModuleListInRole({ id: currRoleId }, (res) => {
+  const getRoleList = (roleId) => {
+    const id = roleId !== undefined ? roleId : currRoleId
+    fetchModuleListInRole({ id }, (res) => {
       const newCheckedIdArr = {}
       setRoleModuleListInRoleResult(res.data)
       const { list } = res.data
@@ -157,7 +160,7 @@ export default function RoleManage() {
         hangdleButton(data, newCheckedIdArr)
       })
       setCheckedIdArr(newCheckedIdArr)
-      getRoleDetail()
+      getRoleDetail(id)
     })
   }
 
@@ -184,10 +187,11 @@ export default function RoleManage() {
     }
   }
 
-  const getPeopleList = () => {
+  const getPeopleList = (params) => {
+    const finalParams = params || { ...peopleSearchKey, roleId: currRoleId }
     setTableLoading(true)
     fetchUserList(
-      { ...peopleSearchKey, roleId: currRoleId },
+      finalParams,
       (res) => {
         setTableLoading(false)
         setRolePeopleResult(res.data)
@@ -198,16 +202,15 @@ export default function RoleManage() {
   const handleCurrentIndex = (id, type) => {
     setCurrRoleId(id)
     setRoleType(type)
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      pageNo: 1,
-    })
+    const nextSearch = { pageNo: 1, pageSize: peopleSearchKey.pageSize }
+    setPeopleSearchKey(nextSearch)
+    form.resetFields(['key'])
     if (activeTab === 'stepTree') {
-      getTreeList()
+      getTreeList(id)
     } else if (activeTab === 'setmodules') {
-      getRoleList()
+      getRoleList(id)
     } else if (activeTab === 'setpeoples') {
-      getPeopleList()
+      getPeopleList({ ...nextSearch, roleId: id })
     }
   }
 
@@ -256,24 +259,30 @@ export default function RoleManage() {
     setSearchKey({
       roleName: value,
     })
-    getData()
+    getData(undefined, value)
   }
 
   const handleDelete = (id) => {
     fetchRoleDeletePeople({ id: id, roleId: currRoleId }, (result) => {
       message.success(result.msg)
-      getPeopleList(currRoleId)
+      const isLastOnPage = rolePeopleResult.list && rolePeopleResult.list.length <= 1
+      const canGoBack = isLastOnPage && peopleSearchKey.pageNo > 1
+      if (canGoBack) {
+        const nextSearch = { ...peopleSearchKey, pageNo: peopleSearchKey.pageNo - 1 }
+        setPeopleSearchKey(nextSearch)
+        getPeopleList({ ...nextSearch, roleId: currRoleId })
+      } else {
+        getPeopleList()
+      }
     })
   }
 
   const handleSearch = (e) => {
     e.stopPropagation()
     const keyword = form.getFieldValue('key')
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      keyword: keyword,
-    })
-    getPeopleList(currRoleId)
+    const nextSearch = { ...peopleSearchKey, keyword, pageNo: 1 }
+    setPeopleSearchKey(nextSearch)
+    getPeopleList({ ...nextSearch, roleId: currRoleId })
   }
 
   const handleOk = () => {
@@ -287,11 +296,11 @@ export default function RoleManage() {
         const type = result.data.list[0].type
         setRoleType(type)
         if (activeTab === 'stepTree') {
-          getTreeList()
+          getTreeList(roleId)
         } else if (activeTab === 'setmodules') {
-          getRoleList()
+          getRoleList(roleId)
         } else if (activeTab === 'setpeoples') {
-          getPeopleList()
+          getPeopleList({ pageNo: 1, pageSize: peopleSearchKey.pageSize, roleId })
         }
       }
     })
@@ -302,20 +311,15 @@ export default function RoleManage() {
   }
 
   const pageChange = (newPage) => {
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      pageNo: newPage,
-    })
-    getPeopleList(currRoleId)
+    const nextSearch = { ...peopleSearchKey, pageNo: newPage }
+    setPeopleSearchKey(nextSearch)
+    getPeopleList({ ...nextSearch, roleId: currRoleId })
   }
 
   const pageSizeChange = (e, pageSize) => {
-    setPeopleSearchKey({
-      ...peopleSearchKey,
-      pageNo: 1,
-      pageSize: pageSize,
-    })
-    getPeopleList(currRoleId)
+    const nextSearch = { ...peopleSearchKey, pageNo: 1, pageSize }
+    setPeopleSearchKey(nextSearch)
+    getPeopleList({ ...nextSearch, roleId: currRoleId })
   }
 
   const buttonList = (id, parentid) => {
@@ -491,7 +495,7 @@ export default function RoleManage() {
                       activeTab === 'setpeoples' ? 'page-search' : 'hide'
                     }
                   >
-                    <Form className="flexrow">
+                    <Form form={form} className="flexrow">
                       <FormItem name="key">
                         <Input
                           className="input-base-width"
